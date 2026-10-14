@@ -226,7 +226,3 @@ To retain a fixed report filename instead, use `--html=reports/android-report.ht
 ## AI use during the assessment
 
 AI was used as a development and research aid for the initial framework structure, reviewing Appium configuration options, and identifying useful failure-diagnostic steps. The framework uses straightforward components so the choices can be reviewed and maintained. AI suggestions are not treated as test evidence; the test suite and reports must be checked on the target devices.
-
-## Before submitting
-
-Run the mobile scenarios on both Android and iOS, retain the resulting HTML reports, and update any device, OS, and Appium version details to match the environment actually used. Do not report a platform as passing until its run has completed successfully.
