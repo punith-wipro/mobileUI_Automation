@@ -1,5 +1,7 @@
 """Product list actions used by the assessment flows."""
 
+from selenium.common.exceptions import TimeoutException
+
 from mobile_qa.pages.base_page import BasePage
 
 
@@ -15,5 +17,12 @@ class InventoryPage(BasePage):
         return self.exists("remove_from_cart", timeout=5)
 
     def sign_out(self) -> None:
+        # Wait for the drawer to open before looking for LOGOUT. This matters on
+        # iOS because the accessibility tree includes off-screen drawer items.
         self.tap("menu_button")
-        self.tap("logout_button")
+        try:
+            self.tap("logout_button")
+        except TimeoutException as exc:
+            LOGGER = __import__("logging").getLogger(__name__)
+            LOGGER.error("Logout item did not become visible after opening the menu")
+            raise exc

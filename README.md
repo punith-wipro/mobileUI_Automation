@@ -87,6 +87,8 @@ pytest tests/steps -m "smoke or regression" --html=reports/ios-report.html --sel
 
 The build file names above are examples; use the exact names of the downloaded release assets.
 
+The iOS page interactions now wait for visible, enabled elements, and text entry is verified before the login action proceeds. This addresses the observed partial username entry (`sndard_user`) and prevents taps on hidden menu items.
+
 You can override settings without changing the config file:
 
 ```bash
@@ -152,13 +154,13 @@ On a failed mobile test, the fixture attempts to save a screenshot, the current 
 - **Avoid blind retries.** Retrying a failed UI action can hide a real product issue or make a stateful flow worse. I would first classify the failure (app defect, environment, locator, timing) and only retry at the orchestration layer for a known transient infrastructure failure.
 - **Fresh state per scenario.** `noReset` is false by default so one test should not depend on another. If the app keeps state despite that setting, add a documented reset step for that app/version.
 - **Stable selectors first.** Accessibility IDs are preferred. The fallback selectors are deliberately small; if the app changes, confirm the current UI hierarchy instead of growing a long list of guesses.
-- **App/device compatibility matters.** A real-device iOS IPA is not interchangeable with an iOS simulator build. Appium, driver, OS, and app versions also need to be compatible.
+- **Use the correct app build for the target.** An iOS Simulator `.app` build is different from a real-device `.ipa` build; use the artifact intended for the simulator or device you are running.
 - **Tests are serial by default.** Parallel mobile sessions need unique devices and isolated app state; I would only enable them once the CI device allocation is reliable.
 - **API checks are examples.** They are intentionally decoupled from the mobile suite and do not pretend to validate a backend for which no specification was provided.
 
 ## Failure report and sample output
 
-Run commands above to generate an HTML report from the actual test run. Failed mobile scenarios create artifacts in `reports/failures/` when the driver still responds. `reports/example-console-output.txt` is an example of the shape of console output, **not a result from a device run**.
+Run commands above to generate an HTML report from the actual test run. Failed mobile scenarios create artifacts in `reports/failures/` when the driver still responds. No pre-generated passing report is included. HTML reports should be generated from your own test execution so their results reflect the device run.
 
 I have not marked the mobile tests as device-verified in this package: running them requires a configured Appium server, a downloaded app build, and a matching emulator/simulator. The code can be syntax-checked without a device, but selector and end-to-end verification should be done on both platforms before treating the suite as green.
 

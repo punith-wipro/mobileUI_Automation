@@ -82,7 +82,10 @@ SELECTORS = {
             (AppiumBy.ACCESSIBILITY_ID, "Add to cart"),
         ],
         "android": [(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().textMatches("(?i)add to cart")')],
-        "ios": [(AppiumBy.IOS_PREDICATE, 'type == "XCUIElementTypeButton" AND label CONTAINS[c] "add to cart"')],
+        # In this React Native build the accessibility element is exposed as
+        # XCUIElementTypeOther, not XCUIElementTypeButton. Prefer its test ID,
+        # then match the visible label without assuming a specific element type.
+        "ios": [(AppiumBy.IOS_PREDICATE, 'label CONTAINS[c] "ADD TO CART" OR name CONTAINS[c] "ADD TO CART"')],
     },
     "remove_from_cart": {
         "shared": [
@@ -91,6 +94,6 @@ SELECTORS = {
             (AppiumBy.ACCESSIBILITY_ID, "REMOVE FROM CART"),
         ],
         "android": [(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().textMatches("(?i)remove( from cart)?")')],
-        "ios": [(AppiumBy.IOS_PREDICATE, 'type == "XCUIElementTypeButton" AND label CONTAINS[c] "remove"')],
+        "ios": [(AppiumBy.IOS_PREDICATE, 'label CONTAINS[c] "REMOVE" OR name CONTAINS[c] "REMOVE"')],
     },
 }

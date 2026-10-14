@@ -6,7 +6,7 @@
   "devices": {
     "android": {
       "device_name": "emulator-5554",
-      "platform_version": "Android 17",
+      "platform_version": "",
       "automation_name": "UiAutomator2",
       "app_path": "apps/Android.SauceLabs.Mobile.Sample.app.2.7.1.apk"
     },
