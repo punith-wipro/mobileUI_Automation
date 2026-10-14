@@ -1,0 +1,15 @@
+EXAMPLE ONLY — illustrative output shape; not produced by an Android/iOS device run.
+
+$ pytest tests/steps -m "smoke or regression"
+============================= test session starts ==============================
+platform darwin -- Python 3.x, pytest-8.x
+Mobile UI suite: Appium + pytest-bdd; device settings loaded from config/env/CLI
+collected 4 items
+
+features/authentication.feature ....                                    [100%]
+
+============================== 4 passed in 00:00 ==============================
+
+Actual device runs will take longer and will create reports/mobile-report.html (when
+--html is supplied). A failing mobile scenario should create screenshot, XML page
+source, and best-effort Android logcat output under reports/failures/.

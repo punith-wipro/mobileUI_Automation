@@ -1,0 +1,20 @@
+{
+  "platform": "android",
+  "server_url": "http://127.0.0.1:4723",
+  "timeout_seconds": 12,
+  "no_reset": false,
+  "devices": {
+    "android": {
+      "device_name": "emulator-5554",
+      "platform_version": "Android 17",
+      "automation_name": "UiAutomator2",
+      "app_path": "apps/Android.SauceLabs.Mobile.Sample.app.2.7.1.apk"
+    },
+    "ios": {
+      "device_name": "iPhone 16",
+      "platform_version": "26.0",
+      "automation_name": "XCUITest",
+      "app_path": "apps/iOS.Simulator.SauceLabs.Mobile.Sample.app.2.7.1.app"
+    }
+  }
+}
