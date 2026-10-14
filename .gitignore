@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 .env
 .DS_Store
+apps/iOS.Simulator.SauceLabs.Mobile.Sample.app.2.7.1.app

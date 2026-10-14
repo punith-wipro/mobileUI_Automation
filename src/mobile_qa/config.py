@@ -73,16 +73,38 @@ def load_settings(pytest_config: Any) -> MobileSettings:
 
 
 def resolve_app_path(app_path: str) -> str:
-    """Resolve local paths from the repo root; leave URLs/cloud storage IDs alone."""
+    """Resolve a local app build, accepting either an iOS .app bundle or its ZIP archive.
+
+    App binaries are intentionally not tracked by Git, so fail with an actionable message
+    when the selected build has not been downloaded locally.
+    """
     if app_path.startswith(("http://", "https://", "storage:")):
         return app_path
+
     path = Path(app_path).expanduser()
     if not path.is_absolute():
         path = PROJECT_ROOT / path
-    if not path.exists():
-        raise FileNotFoundError(
-            f"App build not found: {path}\n"
-            "Download the appropriate build from https://github.com/saucelabs/sample-app-mobile/releases "
-            "or set ANDROID_APP_PATH / IOS_APP_PATH."
-        )
-    return str(path.resolve())
+
+    candidates = [path]
+    # Release downloads may be an archived .app bundle while local setup may use the
+    # extracted .app directory. Resolve either form without requiring config edits.
+    if path.name.endswith(".app"):
+        candidates.append(path.with_name(path.name + ".zip"))
+        candidates.append(path.with_suffix(".zip"))
+    elif path.name.endswith(".app.zip"):
+        candidates.append(path.with_name(path.name[:-4]))
+    elif path.suffix == ".zip" and ".app" in path.name:
+        candidates.append(path.with_suffix(""))
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate.resolve())
+
+    checked = "\n".join(f"  - {candidate}" for candidate in candidates)
+    raise FileNotFoundError(
+        f"App build not found. Checked:\n{checked}\n"
+        "Download the simulator-compatible iOS .app ZIP or Android .apk from "
+        "https://github.com/saucelabs/sample-app-mobile/releases and place it in apps/, "
+        "or set IOS_APP_PATH / ANDROID_APP_PATH to the exact local path. "
+        "For iOS Simulator, do not use a real-device .ipa build."
+    )

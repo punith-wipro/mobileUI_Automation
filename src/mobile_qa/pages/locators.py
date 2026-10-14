@@ -66,6 +66,14 @@ SELECTORS = {
         "android": [(AppiumBy.XPATH, "//*[@content-desc='Open Menu' or @text='Open Menu' or @content-desc='Menu']")],
         "ios": [(AppiumBy.IOS_PREDICATE, 'label CONTAINS[c] "menu" OR name CONTAINS[c] "menu"')],
     },
+    "menu_close": {
+        "shared": [
+            (AppiumBy.ACCESSIBILITY_ID, "test-Close Menu"),
+            (AppiumBy.ACCESSIBILITY_ID, "Close Menu"),
+        ],
+        "android": [(AppiumBy.XPATH, "//*[@content-desc='Close Menu' or @text='Close Menu']")],
+        "ios": [(AppiumBy.IOS_PREDICATE, 'label CONTAINS[c] "close" AND label CONTAINS[c] "menu" OR name CONTAINS[c] "close" AND name CONTAINS[c] "menu"')],
+    },
     "logout_button": {
         "shared": [
             (AppiumBy.ACCESSIBILITY_ID, "test-LOGOUT"),

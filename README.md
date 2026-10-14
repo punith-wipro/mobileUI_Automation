@@ -1,90 +1,140 @@
-# Mobile UI Automation — Appium + Python
+# Mobile UI Automation Framework
 
-This is a small, practical framework for exercising the Sauce Labs sample mobile app on Android and iOS. I picked the sample app because both platforms have the same core login and shopping flows, so the code can show cross-platform design without spending the assessment building an app first.
+> Cross-platform mobile UI automation using Appium, Python, pytest, and pytest-bdd.
 
-The focus is on keeping tests readable and making failures useful to investigate. The scenarios are written in Gherkin, the page objects own UI interactions, and platform settings live outside the test code.
+## Overview
 
-## What is covered
+This framework automates the Sauce Labs sample mobile app on Android and iOS. It uses readable BDD scenarios, the Page Object Model (POM), and configuration-driven execution so the same test suite can run against different devices.
+
+The goal is to keep the framework straightforward to maintain and make test failures easier to investigate.
+
+## Coverage
+
+Mobile scenarios:
 
 - Successful login
-- Rejected login with invalid credentials
+- Login with invalid credentials
 - Logout
 - Add a product to the cart
-- Two small API smoke tests, kept separate from mobile tests
 
-The mobile scenarios carry `@smoke` and/or `@regression` tags. API checks use `@api`.
+The mobile scenarios use `@smoke` and/or `@regression` tags. Two example API smoke tests are also included and use the `@api` tag.
 
-## Framework choices
+The API examples use JSONPlaceholder because no target API specification was provided. They demonstrate separate API-test execution and configuration; they are not validation of a product backend. The demo POST endpoint does not persist data.
 
-- **Python + pytest**: familiar test tooling, fixtures for setup/teardown, and straightforward reporting.
-- **Appium Python Client**: one WebDriver API for Android's UiAutomator2 and iOS's XCUITest.
-- **pytest-bdd**: gives the four user journeys a readable feature file while retaining pytest fixtures and tags.
-- **Page Object Model**: locators and screen actions stay with the page they belong to; step definitions describe the behaviour, not the mechanics.
-- **JSON config + environment overrides**: the same code can run on different devices without editing Python files.
+## Framework design
 
-I prefer accessibility IDs first. They are normally more resilient than XPath and can be shared across platforms when the app exposes the same accessibility identifier. A small fallback list is kept for the sample app's platform differences. If a selector still does not match a new build, inspect the UI hierarchy with Appium Inspector and update the locator in one place rather than adding sleeps or XPath to a test step.
+- **Python and pytest** provide test execution, fixtures, and reporting.
+- **Appium** provides a common WebDriver interface for Android (UiAutomator2) and iOS (XCUITest).
+- **pytest-bdd** keeps the main user journeys in Gherkin feature files.
+- **Page Object Model** keeps locators and screen actions in page objects; step definitions focus on user behaviour.
+- **Centralised locators** make it easier to update selectors when the app changes.
+- **Configuration and environment overrides** allow platform, device, app path, and Appium URL to change without editing test code.
+- **Failure artifacts** help with diagnosis by collecting screenshots, page source, and Android logcat output when available.
+
+Accessibility IDs are preferred where the app exposes them. Small fallback locator lists handle known platform differences. If a selector stops matching, inspect the current hierarchy with Appium Inspector and update the locator centrally rather than adding fixed sleeps or brittle XPath to test steps.
+
+## Project structure
+
+```text
+config/config.json               Platform, device, and app defaults
+features/authentication.feature  BDD scenarios and tags
+src/mobile_qa/config.py          Configuration loading and overrides
+src/mobile_qa/driver_factory.py  Android/iOS Appium capabilities
+src/mobile_qa/pages/             Base page, locators, and screen objects
+tests/steps/                     BDD step definitions and fixtures
+tests/api/                       API smoke-test examples
+reports/                         Generated reports and failure artifacts
+apps/                            Local app builds (not committed in Git)
+```
 
 ## Prerequisites
 
 1. Python 3.10 or newer.
 2. Node.js and Appium 2.
-3. An Android emulator/device **or** an iOS simulator. iOS simulator tests require macOS and Xcode; they cannot run on Windows/Linux.
-4. The matching Appium driver:
+3. An Android emulator/device or an iOS Simulator. iOS Simulator execution requires macOS and Xcode.
+4. The matching Appium driver.
+5. The sample app build for the platform being tested.
 
-   ```bash
-   npm install -g appium
-   appium driver install uiautomator2
-   # On macOS when running iOS:
-   appium driver install xcuitest
-   ```
+Install Appium and its drivers:
 
-5. The Sauce Labs sample app build for the platform under test. Download the simulator/device-appropriate build from the [sample app releases](https://github.com/saucelabs/sample-app-mobile/releases) and place it in `apps/` (or point the configuration at wherever you saved it).
+```bash
+npm install -g appium
+appium driver install uiautomator2
+# On macOS for iOS Simulator:
+appium driver install xcuitest
+```
 
-   - Android: use the `.apk` build.
-   - iOS Simulator: use the simulator `.app` archive, not a real-device `.ipa` build. Real-device iOS signing is a separate setup.
+Download the appropriate build from the [Sauce Labs sample app releases](https://github.com/saucelabs/sample-app-mobile/releases) and place it in `apps/`.
 
-   The upstream sample app repository is archived, but its release builds remain useful for this exercise.
+- **Android:** use the `.apk` build.
+- **iOS Simulator:** use the simulator `.app` build or its ZIP archive, not a real-device `.ipa` build. Real-device iOS signing requires separate setup.
 
-## Install Python dependencies
+App binaries are excluded from Git. Download the required build after cloning the repository, or configure the path to a build already on your machine.
+
+## Install dependencies
 
 From the repository root:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate           # Windows PowerShell: .venv\Scripts\Activate.ps1
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
-Copy `.env.example` to `.env` if you want to use environment variables. The framework loads `.env` automatically. Environment variables override `config/config.json` values.
+On Windows PowerShell, activate the environment with:
 
-## Run the mobile tests
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-Start the emulator/simulator, then start Appium in a separate terminal:
+Update `.env` only if you want to override settings with environment variables. Do not commit credentials or other secrets.
+
+## Configuration
+
+`config/config.json` contains default settings such as platform, Appium URL, device name, platform version, and app path. The framework resolves settings in this order:
+
+1. pytest command-line option
+2. Environment variable or `.env`
+3. `config/config.json`
+
+Relevant environment variables:
+
+- `MOBILE_PLATFORM`
+- `DEVICE_NAME`
+- `PLATFORM_VERSION`
+- `ANDROID_APP_PATH`
+- `IOS_APP_PATH`
+- `APPIUM_SERVER_URL`
+- `API_BASE_URL` for API examples
+
+The app path can point to an extracted iOS `.app` directory or its ZIP archive. Use the exact filename of the build you downloaded.
+
+## Running mobile tests
+
+Start the Android emulator or iOS Simulator first. Start Appium in a separate terminal:
 
 ```bash
 appium
 ```
 
-Update `config/config.json` to use the build path and device name available on your machine, or override them from the shell.
+Create the reports directory before running tests:
+
+```bash
+mkdir -p reports
+```
 
 ### Android
 
 ```bash
 export MOBILE_PLATFORM=android
 export ANDROID_APP_PATH="$PWD/apps/Android.SauceLabs.Mobile.Sample.app.2.7.1.apk"
-pytest tests/steps -m "smoke or regression" --html=reports/android-report.html --self-contained-html
+
+REPORT="reports/android-$(date +%Y%m%d-%H%M%S).html"
+pytest tests/steps -m "smoke or regression" \
+  --html="$REPORT" --self-contained-html
 ```
-
-If Appium reports that `com.swaglabsmobileapp.SplashActivity` never started, first confirm that the emulator is booted and the APK can launch outside Appium. The Android driver configuration allows the app to transition from its splash activity and gives installation/startup commands a bounded timeout; it does not suppress a failed session or turn a failed scenario into a pass. To capture launch/crash evidence, run:
-
-```bash
-adb devices
-adb -s <device-id> shell monkey -p com.swaglabsmobileapp 1
-adb -s <device-id> logcat -d -t 500 > reports/android-launch-logcat.txt
-```
-
-Replace `<device-id>` with the device identifier shown by `adb devices`. If the app still closes, inspect the logcat crash before changing locators or weakening assertions.
 
 ### iOS Simulator (macOS only)
 
@@ -92,14 +142,26 @@ Replace `<device-id>` with the device identifier shown by `adb devices`. If the 
 export MOBILE_PLATFORM=ios
 export IOS_APP_PATH="$PWD/apps/iOS.Simulator.SauceLabs.Mobile.Sample.app.2.7.1.app"
 export DEVICE_NAME="iPhone 16"
-pytest tests/steps -m "smoke or regression" --html=reports/ios-report.html --self-contained-html
+
+REPORT="reports/ios-$(date +%Y%m%d-%H%M%S).html"
+pytest tests/steps -m "smoke or regression" \
+  --device-name "iPhone 16" \
+  --platform-version "26" \
+  --html="$REPORT" --self-contained-html
 ```
 
-The build file names above are examples; use the exact names of the downloaded release assets.
+The build names and simulator version above are examples. Use the exact build path and device/OS version available on your machine. The timestamp in each report filename keeps earlier reports instead of overwriting them.
 
-The iOS page interactions now wait for visible, enabled elements, and text entry is verified before the login action proceeds. This addresses the observed partial username entry (`sndard_user`) and prevents taps on hidden menu items.
+### Run by tag
 
-You can override settings without changing the config file:
+```bash
+pytest tests/steps -m smoke
+pytest tests/steps -m regression
+```
+
+`smoke` is intended as a short confidence check. `regression` covers the four listed user journeys; it is not a claim of complete product regression coverage.
+
+### Override settings from the command line
 
 ```bash
 pytest tests/steps --platform android \
@@ -110,74 +172,61 @@ pytest tests/steps --platform android \
   --html=reports/mobile-report.html --self-contained-html
 ```
 
-The available CLI switches are `--platform`, `--device-name`, `--platform-version`, `--app-path`, and `--appium-url`. Environment variables are `MOBILE_PLATFORM`, `DEVICE_NAME`, `PLATFORM_VERSION`, `ANDROID_APP_PATH`, `IOS_APP_PATH`, and `APPIUM_SERVER_URL`.
+Available CLI options are `--platform`, `--device-name`, `--platform-version`, `--app-path`, and `--appium-url`.
 
-### Run by tag
+### Android startup troubleshooting
+
+If Appium reports that `com.swaglabsmobileapp.SplashActivity` did not start, confirm the emulator is booted and that the APK launches outside Appium. Then collect startup evidence:
 
 ```bash
-pytest tests/steps -m smoke
-pytest tests/steps -m regression
+adb devices
+adb -s <device-id> shell monkey -p com.swaglabsmobileapp 1
+adb -s <device-id> logcat -d -t 500 > reports/android-launch-logcat.txt
 ```
 
-`smoke` is intended for a short confidence check after a build; `regression` covers all four listed user journeys. These tags are not a claim that this is a complete product regression suite.
+Replace `<device-id>` with the identifier shown by `adb devices`. If the app closes, inspect logcat for a crash before changing locators or assertions.
 
-## Run the API tests
+## Running API tests
 
-The brief did not define a product API, so I added two independent examples against JSONPlaceholder. They demonstrate separate API execution and configuration; replace the base URL and assertions with the target service if an API spec is supplied.
+The API examples use JSONPlaceholder and require network access:
 
 ```bash
 export API_BASE_URL=https://jsonplaceholder.typicode.com
-pytest tests/api -m api --html=reports/api-report.html --self-contained-html
+REPORT="reports/api-$(date +%Y%m%d-%H%M%S).html"
+pytest tests/api -m api --html="$REPORT" --self-contained-html
 ```
 
-These tests need network access. The POST endpoint is a demo endpoint and does not persist data.
+These examples are separate from the mobile UI suite. Replace the demo URL and assertions when a target API specification is available.
 
-## Configuration
+## Reports and failure artifacts
 
-`config/config.json` contains platform defaults, Appium URL, device name, platform version, and app path. The selection order is:
-
-1. pytest command-line option
-2. environment variable / `.env`
-3. `config/config.json`
-
-No device-specific data is embedded in a feature file. A remote Appium URL can be supplied as well. Provider-specific cloud authentication/capabilities (for example, Sauce Labs credentials and `sauce:options`) are not wired into this starter; add those in `driver_factory.py` if you choose a hosted device cloud.
-
-## Project layout
+Each mobile run creates a standalone HTML report under `reports/`. The recommended commands use timestamps so reports from earlier runs remain available:
 
 ```text
-config/config.json              Device and app defaults
-features/authentication.feature Gherkin scenarios and tags
-src/mobile_qa/config.py          Config loading and override rules
-src/mobile_qa/driver_factory.py  Android/iOS capability setup
-src/mobile_qa/pages/              Base page and screen objects
- tests/steps/                     BDD step definitions and pytest fixtures
- tests/api/                       API smoke tests
-reports/                          Generated reports and failure artifacts
-apps/                             Put downloaded app builds here (not committed)
+reports/
+├── android-20261014-153000.html
+├── ios-20261014-154500.html
+└── failures/
 ```
 
-On a failed mobile test, the fixture attempts to save a screenshot, the current page source, and (on Android, when available) recent logcat output under `reports/failures/`. The test still fails normally if those diagnostics cannot be collected; artifact collection should not hide the original failure.
+When the driver is responsive, failure diagnostics are saved under `reports/failures/`, including screenshots and page source. Android logcat output is collected when available. Diagnostic collection should not hide or convert a test failure into a pass.
 
-## Reliability and known trade-offs
+To retain a fixed report filename instead, use `--html=reports/android-report.html` or `--html=reports/ios-report.html`. Be aware that a later run with the same filename will overwrite the earlier report.
 
-- **No fixed sleeps in page actions.** Interactions use explicit waits with a bounded timeout.
-- **Avoid blind retries.** Retrying a failed UI action can hide a real product issue or make a stateful flow worse. I would first classify the failure (app defect, environment, locator, timing) and only retry at the orchestration layer for a known transient infrastructure failure.
-- **Fresh state per scenario.** `noReset` is false by default so one test should not depend on another. If the app keeps state despite that setting, add a documented reset step for that app/version.
-- **Stable selectors first.** Accessibility IDs are preferred. The fallback selectors are deliberately small; if the app changes, confirm the current UI hierarchy instead of growing a long list of guesses.
-- **Use the correct app build for the target.** An iOS Simulator `.app` build is different from a real-device `.ipa` build; use the artifact intended for the simulator or device you are running.
-- **Tests are serial by default.** Parallel mobile sessions need unique devices and isolated app state; I would only enable them once the CI device allocation is reliable.
-- **API checks are examples.** They are intentionally decoupled from the mobile suite and do not pretend to validate a backend for which no specification was provided.
+## Reliability and trade-offs
 
-## Failure report and sample output
-
-Run commands above to generate an HTML report from the actual test run. Failed mobile scenarios create artifacts in `reports/failures/` when the driver still responds. No pre-generated passing report is included. HTML reports should be generated from your own test execution so their results reflect the device run.
-
-I have not marked the mobile tests as device-verified in this package: running them requires a configured Appium server, a downloaded app build, and a matching emulator/simulator. The code can be syntax-checked without a device, but selector and end-to-end verification should be done on both platforms before treating the suite as green.
+- **Explicit waits:** page interactions use bounded waits rather than fixed sleeps.
+- **No blind retries:** retries can hide product defects or make stateful flows less reliable. Classify failures first; retry only known transient infrastructure issues at the orchestration level.
+- **Test isolation:** `noReset` is false by default so scenarios should not rely on previous test state.
+- **Serial execution:** tests run serially by default. Parallel mobile runs should be introduced only when each worker has a dedicated device and isolated app state.
+- **Platform-specific builds:** iOS Simulator builds and real-device IPA builds are not interchangeable.
+- **Cloud execution:** hosted device-cloud authentication and provider-specific capabilities (such as Sauce Labs `sauce:options`) are not configured in this starter. Add them in `driver_factory.py` if needed.
+- **Device verification:** test results should be considered verified only after running the suite on the target Android and iOS environments. No pre-generated passing report is included.
 
 ## AI use during the assessment
 
-AI was used as a coding and research aid for the initial scaffold, checking current Appium configuration conventions, and suggesting failure cases worth documenting. The framework choices were kept intentionally plain so each layer is easy to explain and change. AI suggestions are not treated as test evidence: device execution, selector verification, and review of the generated report still need to happen on the target setup. No application secrets or personal credentials are required by this framework.
+AI was used as a development and research aid for the initial framework structure, reviewing Appium configuration options, and identifying useful failure-diagnostic steps. The framework uses straightforward components so the choices can be reviewed and maintained. AI suggestions are not treated as test evidence; the test suite and reports must be checked on the target devices.
 
 ## Before submitting
 
-After running on your machine, add a real HTML report or a couple of screenshots from `reports/failures/` only if useful, and update the README with the device/OS/Appium versions actually used. Do not claim Android or iOS passed until each has been run.
+Run the mobile scenarios on both Android and iOS, retain the resulting HTML reports, and update any device, OS, and Appium version details to match the environment actually used. Do not report a platform as passing until its run has completed successfully.

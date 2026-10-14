@@ -4,8 +4,8 @@ from mobile_qa.pages.base_page import BasePage
 
 
 class LoginPage(BasePage):
-    def is_open(self) -> bool:
-        return self.exists("username") and self.exists("password")
+    def is_open(self, timeout: int = 3) -> bool:
+        return self.exists("username", timeout=timeout) and self.exists("password", timeout=timeout)
 
     def sign_in(self, username: str, password: str) -> None:
         self.enter_text("username", username)

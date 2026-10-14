@@ -28,7 +28,7 @@ class BasePage:
         selector = SELECTORS[name]
         return selector["shared"] + selector.get(self.platform, [])
 
-    def find(self, name: str, timeout: int | None = None):
+    def find(self, name: str, timeout: int | None = None, *, log_timeout: bool = True):
         """Return the first visible, enabled match within one explicit wait.
 
         Appium can return off-screen iOS elements from the accessibility tree. A
@@ -56,17 +56,21 @@ class BasePage:
                 self.driver, timeout or self.timeout, poll_frequency=0.3
             ).until(find_first, message=f"Could not find visible '{name}'. Tried: {candidates}")
         except TimeoutException:
-            LOGGER.error(
-                "Timed out waiting for visible element '%s' on %s; candidates=%s",
-                name,
-                self.platform,
-                candidates,
-            )
+            # Existence checks are expected to return False while the app is
+            # transitioning between screens. Keep those normal probes quiet;
+            # direct interactions still log a useful locator error.
+            if log_timeout:
+                LOGGER.error(
+                    "Timed out waiting for visible element '%s' on %s; candidates=%s",
+                    name,
+                    self.platform,
+                    candidates,
+                )
             raise
 
     def exists(self, name: str, timeout: int = 3) -> bool:
         try:
-            self.find(name, timeout=timeout)
+            self.find(name, timeout=timeout, log_timeout=False)
             return True
         except TimeoutException:
             return False
