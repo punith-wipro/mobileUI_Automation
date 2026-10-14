@@ -76,60 +76,60 @@ class BasePage:
         element.click()
 
     def enter_text(self, name: str, value: str) -> None:
-        """Replace a field's contents and verify the text was actually entered.
+        """Enter text and verify it using attributes supported by the platform.
 
-        Some React Native/iOS text fields can drop characters when `clear()` is
-        immediately followed by `send_keys()`. Verify the resulting value and
-        fall back to Appium's set-value command rather than submitting a subtly
-        corrupted username or password.
+        UiAutomator2 does not expose the WebDriver ``value`` attribute for
+        native Android elements. Android verification therefore uses the
+        supported ``text`` attribute; iOS may use either ``value`` or ``text``.
         """
         element = self.find(name)
         element.click()
         element.clear()
 
-        def is_empty(_driver):
-            try:
-                current = element.get_attribute("value")
-                return current in (None, "", "Username", "Password")
-            except StaleElementReferenceException:
-                return False
-
         if self.platform == "ios":
-            try:
-                WebDriverWait(self.driver, 2, poll_frequency=0.2).until(is_empty)
-            except TimeoutException:
-                LOGGER.debug("Field '%s' did not report empty after clear; continuing with set-value", name)
             try:
                 element.set_value(value)
             except Exception:
-                # Older Appium/XCUITest combinations may not support set_value
-                # consistently; normal key entry remains the compatibility path.
+                # Fall back to keyboard entry on XCUITest versions where
+                # set_value is not supported reliably.
                 element.clear()
                 element.send_keys(value)
         else:
             element.send_keys(value)
 
+        def read_supported_text():
+            """Read supported attributes without masking driver errors."""
+            attributes = ("text", "value") if self.platform == "ios" else ("text",)
+            for attribute in attributes:
+                try:
+                    actual = element.get_attribute(attribute)
+                except Exception as exc:
+                    # Unsupported attributes vary by platform/driver version.
+                    LOGGER.debug("Could not read '%s' attribute for '%s': %s",
+                                 attribute, name, exc)
+                    continue
+                if actual not in (None, ""):
+                    return actual
+            return ""
+
         def value_matches(_driver):
-            try:
-                actual = element.get_attribute("text") or element.get_attribute("value")
-                if actual == value:
-                    return True
-                # Secure iOS fields can return a masked value rather than the
-                # password itself, so only validate its length when masked.
-                if self.platform == "ios" and name == "password" and actual:
-                    return len(actual) == len(value) and set(actual) <= {"•", "*"}
-                return False
-            except StaleElementReferenceException:
-                return False
+            actual = read_supported_text()
+            if actual == value:
+                return True
+
+            # Password fields can expose masked characters instead of their
+            # real value. Accept only a mask with the expected character count.
+            if name == "password" and actual:
+                mask_chars = {"•", "*", "●"}
+                return len(actual) == len(value) and set(actual) <= mask_chars
+            return False
 
         try:
             WebDriverWait(self.driver, 3, poll_frequency=0.2).until(value_matches)
         except TimeoutException:
             if self.platform == "ios":
-                # Retry once with keyboard entry if set_value did not stick.
-                # This fallback is verified too, so we never silently submit a
-                # partially entered username (the observed `sndard_user` case).
-                LOGGER.warning("set_value did not stick for '%s'; retrying with clear/send_keys", name)
+                # Retry keyboard entry once, then verify again.
+                LOGGER.warning("Text entry did not verify for '%s'; retrying keyboard entry", name)
                 element.click()
                 element.clear()
                 element.send_keys(value)
@@ -138,6 +138,12 @@ class BasePage:
                     return
                 except TimeoutException:
                     pass
-            actual = element.get_attribute("value")
-            LOGGER.error("Text entry verification failed for '%s' on %s (actual=%r)", name, self.platform, actual)
-            raise AssertionError(f"Could not enter the expected value into '{name}' on {self.platform}")
+
+            actual = read_supported_text()
+            LOGGER.error(
+                "Text entry verification failed for '%s' on %s (visible value=%r)",
+                name, self.platform, actual,
+            )
+            raise AssertionError(
+                f"Could not verify the expected text in '{name}' on {self.platform}"
+            )

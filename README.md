@@ -76,11 +76,21 @@ export ANDROID_APP_PATH="$PWD/apps/Android.SauceLabs.Mobile.Sample.app.2.7.1.apk
 pytest tests/steps -m "smoke or regression" --html=reports/android-report.html --self-contained-html
 ```
 
+If Appium reports that `com.swaglabsmobileapp.SplashActivity` never started, first confirm that the emulator is booted and the APK can launch outside Appium. The Android driver configuration allows the app to transition from its splash activity and gives installation/startup commands a bounded timeout; it does not suppress a failed session or turn a failed scenario into a pass. To capture launch/crash evidence, run:
+
+```bash
+adb devices
+adb -s <device-id> shell monkey -p com.swaglabsmobileapp 1
+adb -s <device-id> logcat -d -t 500 > reports/android-launch-logcat.txt
+```
+
+Replace `<device-id>` with the device identifier shown by `adb devices`. If the app still closes, inspect the logcat crash before changing locators or weakening assertions.
+
 ### iOS Simulator (macOS only)
 
 ```bash
 export MOBILE_PLATFORM=ios
-export IOS_APP_PATH="$PWD/apps/iOS.Simulator.SauceLabs.Mobile.Sample.app.2.7.1.zip"
+export IOS_APP_PATH="$PWD/apps/iOS.Simulator.SauceLabs.Mobile.Sample.app.2.7.1.app"
 export DEVICE_NAME="iPhone 16"
 pytest tests/steps -m "smoke or regression" --html=reports/ios-report.html --self-contained-html
 ```

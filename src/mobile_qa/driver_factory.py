@@ -67,11 +67,37 @@ def create_driver(settings: MobileSettings):
         capabilities["platformVersion"] = settings.platform_version
 
     if settings.platform == "android":
+        # The sample app can move away from its manifest launch activity very
+        # quickly. Waiting only for SplashActivity can make Appium report that
+        # startup failed even when the app has already navigated to another
+        # activity. Keep the wait bounded, but accept the app's active activity.
+        capabilities.update(
+            {
+                "appWaitActivity": "*",
+                "appWaitDuration": 30000,
+                "androidInstallTimeout": 120000,
+                "adbExecTimeout": 60000,
+                "uiautomator2ServerLaunchTimeout": 60000,
+                "autoGrantPermissions": True,
+            }
+        )
         options = UiAutomator2Options().load_capabilities(capabilities)
     else:
         options = XCUITestOptions().load_capabilities(capabilities)
 
-    driver = webdriver.Remote(command_executor=settings.server_url, options=options)
+    try:
+        driver = webdriver.Remote(command_executor=settings.server_url, options=options)
+    except Exception:
+        LOGGER.exception(
+            "Could not create Appium session for platform=%s device=%s app=%s. "
+            "For Android, check whether the app crashes during launch with "
+            '`adb -s <device-id> logcat -d -t 500` and verify the APK on the emulator.',
+            settings.platform,
+            settings.device_name,
+            app,
+        )
+        raise
+
     if settings.platform == "android":
         _dismiss_android_compatibility_dialog(driver)
     return driver
